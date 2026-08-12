@@ -146,7 +146,6 @@ export function InterviewTools() {
   const [notes, setNotes] = useState<Record<string, QuestionNote>>({})
   const [overallNotes, setOverallNotes] = useState('')
   const [copyMsg, setCopyMsg] = useState<string | null>(null)
-  const hasApiKey = Boolean(import.meta.env.VITE_OPENAI_API_KEY?.trim())
 
   const noteableQuestions = useMemo(() => {
     if (!result) return []
