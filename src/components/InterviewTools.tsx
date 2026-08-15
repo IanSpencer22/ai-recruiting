@@ -135,7 +135,7 @@ function QuestionCard({
 }
 
 export function InterviewTools() {
-  const [jobTitle, setJobTitle] = useState('Senior Software Engineer')
+  const [jobTitle, setJobTitle] = useState('Software Engineer')
   const [level, setLevel] = useState<string>('Senior')
   const [focus, setFocus] = useState('System design, mentoring, stakeholder communication')
   const [loading, setLoading] = useState(false)
