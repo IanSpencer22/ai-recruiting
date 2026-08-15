@@ -32,9 +32,13 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 
 ### Optional: live OpenAI generation
 
-1. Open `.env` (already created; gitignored)
-2. Set `VITE_OPENAI_API_KEY=sk-...`
+The key stays on the **server**. Do not use a `VITE_` prefix — Vite would bake it into public JS and OpenAI will disable it as leaked.
+
+1. Open `.env` (gitignored)
+2. Set `OPENAI_API_KEY=sk-...`
 3. Restart `npm run dev`
+
+On Railway, set `OPENAI_API_KEY` as a **runtime** variable (not a build arg). Use a **new** key if a previous one was already revoked.
 
 Without a key, the app still generates a solid demo kit from a built-in template.
 
@@ -65,6 +69,7 @@ How this maps to the Domo / TA visibility brief:
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Local development |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
+| `npm run dev` | Vite client + local API server |
+| `npm run build` | Production frontend build |
+| `npm start` | Serve API + built SPA (used in Docker/Railway) |
+| `npm run preview` | Preview production frontend only |

@@ -20,47 +20,7 @@ export interface InterviewAiResult {
   guide: InterviewGuide
 }
 
-const SYSTEM = `You are an expert talent acquisition partner and interview designer.
-Return ONLY valid JSON matching the requested schema. No markdown fences.
-Be specific to the role and level — avoid generic fluff.
-Questions should be behavioral and role-relevant, not trivia.`
-
-function buildUserPrompt(jobTitle: string, level: string, focus?: string) {
-  return `Create an interview kit for:
-- Job title: ${jobTitle}
-- Level: ${level}
-${focus ? `- Extra focus areas: ${focus}` : ''}
-
-JSON schema:
-{
-  "questionBank": [
-    {
-      "category": "string (e.g. Technical, Behavioral, Leadership, Collaboration)",
-      "question": "string",
-      "whyItMatters": "string",
-      "followUps": ["string", "string"]
-    }
-  ],
-  "guide": {
-    "roleSummary": "2-3 sentences on what good looks like for this hire",
-    "competencies": ["5-7 must-assess competencies"],
-    "timeline": [
-      { "segment": "string", "minutes": number, "focus": "string" }
-    ],
-    "questions": [ /* 6-8 of the strongest questions, same shape as questionBank items */ ],
-    "scorecard": [
-      { "trait": "string", "signals": "what strong vs weak answers sound like" }
-    ],
-    "redFlags": ["string"],
-    "closingPrompt": "one closing question for the candidate"
-  }
-}
-
-Provide 10-12 items in questionBank covering technical/domain, behavioral, and collaboration.
-Timeline should total ~45-60 minutes for a structured interview.`
-}
-
-/** Demo fallback when no API key is configured — still interview-demoable offline */
+/** Demo fallback when the server has no OpenAI key — still interview-demoable offline */
 export function buildFallbackKit(jobTitle: string, level: string): InterviewAiResult {
   const label = `${level} ${jobTitle}`
   const questionBank: QuestionBankItem[] = [
@@ -188,31 +148,24 @@ export async function generateInterviewKit(params: {
   focus?: string
 }): Promise<InterviewAiResult> {
   const { jobTitle, level, focus } = params
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY?.trim()
 
-  if (!apiKey) {
-    // Simulate latency so UI states feel real in demos
+  const response = await fetch('/api/interview-kit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jobTitle, level, focus }),
+  })
+
+  if (response.status === 503) {
     await new Promise((r) => setTimeout(r, 700))
     return buildFallbackKit(jobTitle, level)
   }
 
-  const { default: OpenAI } = await import('openai')
-  const client = new OpenAI({ apiKey, dangerouslyAllowBrowser: true })
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null
+    throw new Error(payload?.error ?? 'Generation failed')
+  }
 
-  const completion = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    temperature: 0.4,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: SYSTEM },
-      { role: 'user', content: buildUserPrompt(jobTitle, level, focus) },
-    ],
-  })
-
-  const raw = completion.choices[0]?.message?.content
-  if (!raw) throw new Error('Empty response from OpenAI')
-
-  const parsed = JSON.parse(raw) as InterviewAiResult
+  const parsed = (await response.json()) as InterviewAiResult
   if (!parsed.questionBank?.length || !parsed.guide) {
     throw new Error('Unexpected AI response shape')
   }

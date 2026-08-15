@@ -1,4 +1,4 @@
-# ---- Build ----
+# ---- Build frontend (no secrets) ----
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -7,25 +7,22 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-
-# Vite inlines VITE_* at build time — set this in Railway (available at build)
-ARG VITE_OPENAI_API_KEY
-ENV VITE_OPENAI_API_KEY=$VITE_OPENAI_API_KEY
-
 RUN npm run build
 
-# ---- Serve static SPA ----
+# ---- API + static SPA ----
 FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-RUN npm install -g serve@14.2.4
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
+COPY server ./server
 
 ENV NODE_ENV=production
-# Railway injects PORT at runtime
+# Railway injects PORT at runtime. Keep OPENAI_API_KEY as a runtime env var only.
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["sh", "-c", "serve -s dist -l tcp://0.0.0.0:${PORT}"]
+CMD ["node", "server/index.mjs"]
